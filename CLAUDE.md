@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**Skeleton** is a full-stack TypeScript monorepo for building web applications. It provides authentication, file management, user administration, and a ready-to-deploy Docker infrastructure.
+**Skeleton** is a full-stack TypeScript monorepo template for building web applications. It provides authentication, file management, user administration, and a ready-to-deploy Docker infrastructure. It is designed to be cloned and customized as a starting point for new projects.
 
 - **Runtime**: Bun (backend + lib), Node.js (frontend SSR)
 - **Language**: TypeScript everywhere
@@ -52,6 +52,7 @@ Access at `https://localhost:8443`. Default users (password: `123456`):
 - `auth.login`, `auth.renew`, `auth.logout`, `auth.changePassword`
 - `file.list`, `file.remove`
 - `admin.users.search`, `admin.users.getById`, `admin.users.update`, `admin.users.create`
+- `admin.files.search`
 
 **Procedure middleware chain**:
 ```
@@ -80,7 +81,8 @@ Defined in `src/orpc/RPCUtils.ts`. Each layer adds context (cookies → user ses
 - `/` — `IndexPage.vue` (dashboard, file list, upload/download/delete)
 - `/login` — `LoginPage.vue`
 - `/logout` — `LogoutPage.vue`
-- `/admin/users` — `AdminUsersPage.vue` (admin-only user management)
+- `/admin/users` — `AdminUsersPage.vue` (admin-only user management with auto-save)
+- `/admin/files` — `AdminFilesPage.vue` (admin-only file browser with owner details)
 
 **i18n**: French (`fr`) only. Schema in `src/i18n/index.ts`, translations in `src/i18n/fr.ts`. Both files must be updated together when adding keys.
 
@@ -143,7 +145,8 @@ Defined in `src/orpc/RPCUtils.ts`. Each layer adds context (cookies → user ses
 ### Adding a new page
 1. Create `.vue` file in `packages/frontend/src/pages/`
 2. Add route in `packages/frontend/src/router/routes.ts`
-3. Add i18n keys in both `src/i18n/index.ts` (type) and `src/i18n/fr.ts` (translation)
+3. Add i18n keys in both `src/i18n/index.ts` (type schema) and `src/i18n/fr.ts` (translation values)
+4. Add navigation link in `src/layouts/MainLayout.vue` if needed (admin pages go in the dropdown menu)
 
 ### Adding a new database table
 1. Add SQL in `packages/postgres/db.sql`
@@ -155,6 +158,7 @@ Defined in `src/orpc/RPCUtils.ts`. Each layer adds context (cookies → user ses
 - `types.ts` uses plain TypeScript types with `Insertable<T>` and `Updateable<T>` from Kysely
 - Do NOT use Kysely's `Generated<T>` type wrapper — use explicit types and pass all required fields on insert
 - All table interfaces must list every column with its exact type
+- PostgreSQL BIGINT columns are returned as strings by the driver — coerce to `Number()` in the DAO layer
 
 ### Error handling
 - Backend: throw custom exceptions from `packages/lib/src/Exceptions.ts`
@@ -166,6 +170,12 @@ Defined in `src/orpc/RPCUtils.ts`. Each layer adds context (cookies → user ses
 - Download: GET `/api/files/:fileId` — triggers browser download
 - Delete: oRPC `file.remove` — deletes from disk and database
 
+### UI conventions
+- Apple-style design: rounded cards, subtle backgrounds, system font weights
+- Admin pages use a two-panel layout (left: search/list, right: details)
+- Form changes auto-save with debounce (no save button)
+- Dark mode supported — use `rgba()` colors and `.body--dark` scoped overrides
+
 ## Environment Variables
 
 See `.env.example` for full list. Key variables:
@@ -174,7 +184,6 @@ See `.env.example` for full list. Key variables:
 - `VOLUME_PATH`: host path for persistent data
 - `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`: database credentials
 - `USER_SESSION_EXP`: session TTL in seconds (default: 86400)
-- `MAX_FILE_SIZE`: max upload size in bytes (default: 4GB)
 
 ## Development Notes
 
@@ -183,3 +192,4 @@ See `.env.example` for full list. Key variables:
 - Source code is mounted into containers via Docker volumes (node_modules excluded)
 - After scaling backend replicas, restart nginx to re-resolve DNS: `docker compose restart nginx`
 - Passwords are hashed with Argon2id via `Bun.password.hash()`
+- PostgreSQL initializes automatically on first run using `packages/postgres/db.sql`
