@@ -1,0 +1,107 @@
+networks:
+  skeleton_network:
+    driver: bridge
+  skeleton_nginx_network:
+    driver: bridge
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: ./packages/backend/Dockerfile
+      target: ${ENV}
+    deploy:
+      replicas: 2
+    environment:
+      - TZ=${TZ}
+      - ENV=${ENV}
+      - USER_SESSION_EXP=${USER_SESSION_EXP}
+      - DOMAIN=${DOMAIN}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    expose: 
+      - 9000
+    volumes:
+      - ${VOLUME_PATH}/logs:/data/logs
+      - ${VOLUME_PATH}/files:/data/files
+      - ./packages/backend:/app_dev/packages/backend
+      - ./packages/lib:/app_dev/packages/lib
+      - /app_dev/packages/backend/node_modules # do not mount this directory from host
+      - /app_dev/packages/lib/node_modules # do not mount this directory from host
+    networks:
+      - skeleton_network
+      - skeleton_nginx_network
+    entrypoint: /usr/local/bin/start.sh
+
+  frontend:
+    build:
+      context: .
+      dockerfile: ./packages/frontend/Dockerfile
+      target: ${ENV}
+    environment:
+      - TZ=${TZ}
+      - ORGANIZATION=${ORGANIZATION}
+      - ENV=${ENV}
+      - DOMAIN=${DOMAIN}
+      - TITLE=${FRONTEND_TITLE}
+    expose:
+      - 8000  # http
+      - 24678 # quasar ws dev port
+    volumes:
+      - ./packages/frontend:/app_dev/packages/frontend
+      - /app_dev/packages/frontend/node_modules # do not mount this directory from host
+    networks:
+      - skeleton_network
+      - skeleton_nginx_network
+    entrypoint: /usr/local/bin/start.sh
+
+  nginx:
+    container_name: skeleton-nginx
+    build:
+      context: .
+      dockerfile: ./packages/nginx/Dockerfile
+      args:
+        NGINX_CERTIFICATE_LOCATION: ${NGINX_CERTIFICATE_LOCATION}
+        NGINX_CERTIFICATE_KEY_LOCATION: ${NGINX_CERTIFICATE_KEY_LOCATION}
+    depends_on:
+      - backend
+      - frontend
+    ports:
+      - ${NGINX_HTTPS_PORT}:443
+      - 24678:24678
+    volumes:
+      - ${VOLUME_PATH}/logs:/data/logs
+      - ${VOLUME_PATH}/files:/data/files
+    networks:
+      - skeleton_nginx_network
+    command: ["nginx", "-g", "daemon off;"]
+    
+  postgres:
+    build:
+      context: .
+      dockerfile: ./packages/postgres/Dockerfile
+    environment:
+      - TZ=${TZ}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    ports:
+      - ${POSTGRES_EXTERNAL_PORT}:5432
+    networks:
+      - skeleton_network
+    volumes:
+      - ${VOLUME_PATH}/postgres:/var/lib/postgresql
+    command: postgres
+
+  redis:
+    build:
+      context: .
+      dockerfile: ./packages/redis/Dockerfile
+    ports:
+      - ${REDIS_EXTERNAL_PORT}:6379
+    networks:
+      - skeleton_network
+    volumes:
+      - ${VOLUME_PATH}/redis:/data/redis
+    command: ["redis-server", "--appendonly", "yes", "--dir", "/data/redis"]

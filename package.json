@@ -1,0 +1,14 @@
+{
+  "name": "@skeleton/main",
+  "type": "module",
+  "version": "1.0.0",
+  "repository": "https://github.com/HEP-VD-CSeL/skeleton",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {},
+  "dependencies": {
+    
+  }
+}
