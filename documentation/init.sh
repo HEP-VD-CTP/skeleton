@@ -43,7 +43,7 @@ echo ""
 
 # Volume path
 while true; do
-  read -p "Chemin vers le volume (ex: /Users/user/Desktop/volume/projet) : " VOLUME_PATH
+  read -p "Chemin vers le volume (ex: /Users/user/Desktop/volumes) : " VOLUME_PATH
   if [[ -z "$VOLUME_PATH" ]]; then
     echo "Erreur : le chemin ne peut pas être vide."
   else
