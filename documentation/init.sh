@@ -59,3 +59,81 @@ echo "  Titre          : $APP_TITLE"
 echo "  Organisation   : $ORG_NAME"
 echo "  Chemin volume  : $VOLUME_PATH"
 echo ""
+
+# ──────────────────────────────────────────────
+# Create volume directory if it does not exist
+# ──────────────────────────────────────────────
+FULL_VOLUME_PATH="$VOLUME_PATH/$APP_TITLE_LOWER"
+
+if [[ ! -d "$FULL_VOLUME_PATH" ]]; then
+  mkdir -p "$FULL_VOLUME_PATH"
+  echo "Dossier volume créé : $FULL_VOLUME_PATH"
+else
+  echo "Dossier volume existant : $FULL_VOLUME_PATH"
+fi
+
+echo ""
+
+# ──────────────────────────────────────────────
+# Generate .env from .env.example
+# ──────────────────────────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+ENV_EXAMPLE="$PROJECT_ROOT/.env.example"
+ENV_FILE="$PROJECT_ROOT/.env"
+
+if [[ ! -f "$ENV_EXAMPLE" ]]; then
+  echo "Erreur : fichier .env.example introuvable à $ENV_EXAMPLE"
+  exit 1
+fi
+
+APP_TITLE_LOWER=$(echo "$APP_TITLE" | tr '[:upper:]' '[:lower:]')
+
+sed \
+  -e "s|^ORGANIZATION=.*|ORGANIZATION=$ORG_NAME|" \
+  -e "s|^FRONTEND_TITLE=.*|FRONTEND_TITLE=$APP_TITLE_LOWER|" \
+  -e "s|^VOLUME_PATH=.*|VOLUME_PATH=$FULL_VOLUME_PATH|" \
+  -e "s|^POSTGRES_DB=.*|POSTGRES_DB=$APP_TITLE_LOWER|" \
+  "$ENV_EXAMPLE" > "$ENV_FILE"
+
+echo "Fichier .env généré avec succès à $ENV_FILE"
+echo ""
+
+# ──────────────────────────────────────────────
+# Rename @skeleton/ scope in all package.json
+# ──────────────────────────────────────────────
+find "$PROJECT_ROOT" -name "package.json" -not -path "*/node_modules/*" | while read -r pkg; do
+  if grep -q '"@skeleton/' "$pkg"; then
+    sed -i '' "s|@skeleton/|@${APP_TITLE_LOWER}/|g" "$pkg"
+    echo "Renommé @skeleton/ → @${APP_TITLE_LOWER}/ dans $pkg"
+  fi
+done
+
+echo ""
+
+# ──────────────────────────────────────────────
+# Rename skeleton networks in docker-compose.yml
+# ──────────────────────────────────────────────
+COMPOSE_FILE="$PROJECT_ROOT/docker-compose.yml"
+
+if [[ -f "$COMPOSE_FILE" ]]; then
+  sed -i '' \
+    -e "s|skeleton_nginx_network|${APP_TITLE_LOWER}_nginx_network|g" \
+    -e "s|skeleton_network|${APP_TITLE_LOWER}_network|g" \
+    -e "s|skeleton-nginx|${APP_TITLE_LOWER}-nginx|g" \
+    "$COMPOSE_FILE"
+  echo "Renommé réseaux skeleton → ${APP_TITLE_LOWER} dans docker-compose.yml"
+fi
+
+echo ""
+echo "=========================================="
+echo "  Initialisation terminée !"
+echo "=========================================="
+echo ""
+echo "Pour lancer le projet :"
+echo "  cd .."
+echo "  docker compose up --build"
+echo ""
+echo "Le projet sera disponible à :"
+echo "  https://localhost:8443/"
+echo ""
