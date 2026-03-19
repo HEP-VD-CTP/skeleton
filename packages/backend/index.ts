@@ -15,6 +15,7 @@ import {
 import { rpcHandler } from "./src/orpc/RPCHandler"
 import { router } from "./src/orpc/Router"
 import { fileRoutes } from "./src/rest/index"
+import { migrate } from "./src/migrate"
 
 const PORT = 9000
 const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || String(4 * 1024 * 1024 * 1024)) // 4GB default
@@ -102,7 +103,10 @@ app
     parse: 'none' // Disable Elysia body parser to prevent "body already used" error
   })
   .use(fileRoutes)
-  .listen({
+
+await migrate()
+
+app.listen({
     port: PORT,
     maxRequestBodySize: MAX_FILE_SIZE
   })

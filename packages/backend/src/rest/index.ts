@@ -183,4 +183,5 @@ export const fileRoutes = new Elysia()
     })
   }, {
     params: z.object({ fileId: uuidValidation })
-  })
+  }) 
+  

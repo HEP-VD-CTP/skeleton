@@ -8,7 +8,7 @@ import {
 import User from './User.ts'
 import File from './File.ts'
 
-const sql = new SQL({
+export const sql = new SQL({
   database: process.env.POSTGRES_DB || 'skeleton',
   host: 'postgres',
   port: parseInt(process.env.POSTGRES_PORT || '5432'),

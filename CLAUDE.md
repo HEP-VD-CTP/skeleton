@@ -1,5 +1,47 @@
 # CLAUDE.md
 
+## IMPORTANT: This is a Template Project
+
+This codebase is a **skeleton/template** that provides the foundation (auth, file management, admin, infrastructure). Your job is to **build on top of it** — add new features, pages, tables, and procedures to create the actual application.
+
+### Guardrails — What You MUST Follow
+
+**DO:**
+- Add new pages in `packages/frontend/src/pages/`
+- Add new components in `packages/frontend/src/components/`
+- Add new oRPC procedures in `packages/backend/src/orpc/Router.ts`
+- Add new database tables in `packages/postgres/db.sql` AND `packages/postgres/migrate.sql` (idempotent version), and corresponding DAO files in `packages/lib/src/db/`
+- Add kysely database types in `packages/lib/src/db/types.ts`
+- Add new Zod validators in `packages/lib/src/utils.ts`
+- Add i18n keys in BOTH `src/i18n/index.ts` AND `src/i18n/fr.ts` (always together)
+- Follow the existing patterns: look at how `User.ts` DAO, or `Router.ts` are structured and replicate the same style
+- Use the existing exception classes for error handling
+- Use the existing auth middleware (`authedProcedure`, `adminProcedure`) for new procedures
+- Coerce PostgreSQL BIGINT values to `Number()` in the DAO layer
+- use uuidv7 as a key in postgres
+
+**DO NOT:**
+- Modify `docker-compose.yml` unless explicitly asked or really needed
+- Modify `packages/nginx/nginx.conf` unless explicitly asked or really needed
+- Modify `packages/backend/index.ts` (the Elysia server entry point) unless explicitly asked
+- Modify `packages/lib/src/db/DB.ts` (database connection) unless adding a new table export
+- Change the authentication flow or session management
+- Change the file upload/download mechanism, if you need a new file upload/download route, copy and modify the current one
+- Remove or rename existing files, functions, or exports that other parts of the codebase depend on
+- Modify `.env.example` or `.env` unless explicitly asked or really needed
+- Change the Dockerfile or build configuration
+- Use default values for database fields. Always explicit types without default values.
+
+### Before Marking a Feature as Done
+
+- [ ] Backend procedure added with proper middleware (public/authed/admin)?
+- [ ] Input validation uses Zod schemas?
+- [ ] DAO functions throw appropriate exceptions (NotFoundException, ConflictException, etc.)?
+- [ ] Frontend page created with route added in `routes.ts`?
+- [ ] i18n keys added in BOTH `index.ts` (type) AND `fr.ts` (translation)?
+- [ ] Navigation link added if the page should be accessible from the menu?
+- [ ] Error handling in frontend uses `q.notify()` for user feedback?
+
 ## Project Overview
 
 **Skeleton** is a full-stack TypeScript monorepo template for building web applications. It provides authentication, file management, user administration, and a ready-to-deploy Docker infrastructure. It is designed to be cloned and customized as a starting point for new projects.
@@ -114,6 +156,12 @@ Defined in `src/orpc/RPCUtils.ts`. Each layer adds context (cookies → user ses
 - Custom `uuid_v7()` PL/pgSQL function
 - Seed data with 3 default users
 
+**Migration** (`migrate.sql`):
+- Idempotent version of `db.sql` — executed by the backend on every startup via `packages/backend/src/migrate.ts`
+- Uses `CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`, `INSERT ... ON CONFLICT DO NOTHING`
+- Coordinated across backend replicas using a PostgreSQL advisory lock (only one replica runs the migration)
+- Both `db.sql` and `migrate.sql` must be kept in sync when adding new tables or indexes
+
 **Important**: The table is named `users` (not `user`) to avoid PostgreSQL reserved keyword issues.
 
 ### Infrastructure
@@ -143,16 +191,16 @@ Defined in `src/orpc/RPCUtils.ts`. Each layer adds context (cookies → user ses
 3. The frontend oRPC client auto-infers types from the router
 
 ### Adding a new page
-1. Create `.vue` file in `packages/frontend/src/pages/`
+1. Create `.vue` file in `packages/frontend/src/pages/` and components in `packages/frontend/src/components/`
 2. Add route in `packages/frontend/src/router/routes.ts`
 3. Add i18n keys in both `src/i18n/index.ts` (type schema) and `src/i18n/fr.ts` (translation values)
-4. Add navigation link in `src/layouts/MainLayout.vue` if needed (admin pages go in the dropdown menu)
 
 ### Adding a new database table
-1. Add SQL in `packages/postgres/db.sql`
-2. Add TypeScript interface in `packages/lib/src/db/types.ts` (use plain types, not `Generated`)
-3. Create DAO file in `packages/lib/src/db/`
-4. Export from `packages/lib/src/db/DB.ts`
+1. Add SQL in `packages/postgres/db.sql` (used for first-time Docker init)
+2. Add the same table/indexes in `packages/postgres/migrate.sql` using **idempotent** statements (`CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`, `INSERT ... ON CONFLICT DO NOTHING`). This file runs on every backend startup.
+3. Add TypeScript interface in `packages/lib/src/db/types.ts` (use plain types, not `Generated`)
+4. Create DAO file in `packages/lib/src/db/`
+5. Export from `packages/lib/src/db/DB.ts`
 
 ### Type conventions
 - `types.ts` uses plain TypeScript types with `Insertable<T>` and `Updateable<T>` from Kysely
@@ -193,3 +241,4 @@ See `.env.example` for full list. Key variables:
 - After scaling backend replicas, restart nginx to re-resolve DNS: `docker compose restart nginx`
 - Passwords are hashed with Argon2id via `Bun.password.hash()`
 - PostgreSQL initializes automatically on first run using `packages/postgres/db.sql`
+- On every backend startup, `packages/postgres/migrate.sql` runs to apply any missing tables/indexes (idempotent, safe with multiple replicas)

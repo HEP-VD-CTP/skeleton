@@ -27,6 +27,7 @@ services:
       - ${VOLUME_PATH}/files:/data/files
       - ./packages/backend:/app_dev/packages/backend
       - ./packages/lib:/app_dev/packages/lib
+      - ./packages/postgres:/app_dev/packages/postgres
       - /app_dev/packages/backend/node_modules # do not mount this directory from host
       - /app_dev/packages/lib/node_modules # do not mount this directory from host
     networks:
