@@ -61,6 +61,11 @@ echo "  Chemin volume  : $VOLUME_PATH"
 echo ""
 
 # ──────────────────────────────────────────────
+# Derive lowercase title (used everywhere below)
+# ──────────────────────────────────────────────
+APP_TITLE_LOWER=$(echo "$APP_TITLE" | tr '[:upper:]' '[:lower:]')
+
+# ──────────────────────────────────────────────
 # Create volume directory if it does not exist
 # ──────────────────────────────────────────────
 FULL_VOLUME_PATH="$VOLUME_PATH/$APP_TITLE_LOWER"
@@ -86,8 +91,6 @@ if [[ ! -f "$ENV_EXAMPLE" ]]; then
   echo "Erreur : fichier .env.example introuvable à $ENV_EXAMPLE"
   exit 1
 fi
-
-APP_TITLE_LOWER=$(echo "$APP_TITLE" | tr '[:upper:]' '[:lower:]')
 
 sed \
   -e "s|^ORGANIZATION=.*|ORGANIZATION=$ORG_NAME|" \
